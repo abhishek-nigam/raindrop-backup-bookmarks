@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS bookmark (
+    _id INTEGER PRIMARY KEY,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    link TEXT NOT NULL,
+    title VARCHAR(200) NOT NULL
+);
