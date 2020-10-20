@@ -2,6 +2,7 @@ import requests
 import json
 import time
 import os
+import sys
 import psycopg2
 import dateutil.parser
 from datetime import datetime
@@ -19,6 +20,7 @@ from config import (
 
 URL = "https://api.raindrop.io/rest/v1/raindrops/0"
 MAX_BOOKMARKS_PER_PAGE = 50
+NETWORK_MAX_TRIES = 6
 
 
 def save_bookmarks_json(bookmarks: List[Bookmark], file_path: str) -> None:
@@ -130,6 +132,27 @@ def get_bookmarks(token: str, most_recent_bookmark_created_at_datetime: Optional
             print(f"Request failed with status code {response.status_code}")
             return None
 
+def wait_for_network_connection(max_tries: int) -> None:
+    wait_for_seconds = 10
+    no_of_tries = 1
+
+    print("Checking internet connection")
+
+    while True:
+        if no_of_tries > max_tries:
+            print(f"Couldn't get network connection after {max_tries} attempts, exiting")
+            sys.exit(1)
+
+        try:
+            requests.head("http://www.google.com", timeout=5)
+            return
+        except (requests.ConnectionError, requests.Timeout) as e:
+            pass
+
+        print(f"Waiting for internet connection. Next attempt in {wait_for_seconds} seconds")
+        time.sleep(wait_for_seconds)
+        wait_for_seconds = wait_for_seconds * 2
+        no_of_tries = no_of_tries + 1
 
 def main():
     load_dotenv()
@@ -137,6 +160,8 @@ def main():
     token = config['token']
 
     args = get_command_line_args()
+
+    wait_for_network_connection(NETWORK_MAX_TRIES)
 
     if args.save == BACKUP_LOCATION_DB:
         most_recent_bookmark_created_at_datetime = None
