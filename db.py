@@ -1,7 +1,11 @@
 import psycopg2
+from logger import logger
 
 
 class DatabaseConnection:
+    '''
+        A context manager class for managing database connection and cursor
+    '''
     def __init__(self, config):
         self.config = config
 
@@ -14,7 +18,7 @@ class DatabaseConnection:
                 port=self.config['db_port'])
             return self.connection
         except (Exception, psycopg2.Error) as error:
-            print(f"Could not open connection to database {error}")
+            logger.error(f"Could not open connection to database {error}")
             return None
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -22,6 +26,9 @@ class DatabaseConnection:
             self.connection.close()
 
     class Cursor():
+        '''
+            A context manager class for managing database cursor
+        '''
         def __init__(self, connection):
             self.connection = connection
 
@@ -30,7 +37,7 @@ class DatabaseConnection:
                 self.cursor = self.connection.cursor()
                 return self.cursor
             except (Exception, psycopg2.Error) as error:
-                print(f"Could could not get cursor from database connection")
+                logger.error(f"Could could not get cursor from database connection")
                 return None
 
         def __exit__(self, exc_type, exc_val, exc_tb):

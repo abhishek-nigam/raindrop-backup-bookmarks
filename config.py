@@ -1,6 +1,7 @@
 import os
 import sys
 import argparse
+from logger import logger
 
 BACKUP_LOCATION_DB = "db"
 BACKUP_LOCATION_JSON = "json"
@@ -10,32 +11,36 @@ BACKUP_TYPE_INCREMENTAL = "incremental"
 
 
 def get_config():
+    '''
+        Get all required configration values from environment
+        variables, or else exit if any value is missing
+    '''
     success = True
 
     token = os.getenv('RAINDROP_IO_TOKEN')
     if token is None:
         success = False
-        print("Raindrop IO token is not provided")
+        logger.error("Raindrop IO token is not provided")
 
     db_username = os.getenv('POSTGRES_USERNAME')
     if db_username is None:
         success = False
-        print("DB username is not provided")
+        logger.error("DB username is not provided")
 
     db_password = os.getenv('POSTGRES_PASSWORD')
     if db_password is None:
         success = False
-        print("DB password is not provided")
+        logger.error("DB password is not provided")
 
     db_host = os.getenv('POSTGRES_HOST')
     if db_host is None:
         success = False
-        print("DB host is not provided")
+        logger.error("DB host is not provided")
 
     db_port = os.getenv('POSTGRES_PORT')
     if db_port is None:
         success = False
-        print("DB port is not provided")
+        logger.error("DB port is not provided")
 
     if success:
         return {
@@ -50,6 +55,9 @@ def get_config():
 
 
 def get_command_line_args():
+    '''
+        Get configration values from command line arguments
+    '''
     parser = argparse.ArgumentParser(
         description="This tool is used to backup bookmarks stored in Raindrop.io")
 
