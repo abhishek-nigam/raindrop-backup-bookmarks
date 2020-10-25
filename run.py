@@ -30,11 +30,12 @@ def save_as_json(bookmarks: List[Bookmark], file_path: str) -> None:
     '''
 
     data: List[Dict] = []
-    
+
     save_location = os.path.join(
-        "output", f"all_bookmarks_{int(time.time())}.json") # use file name with epoch seconds as default
+        "output", f"all_bookmarks_{int(time.time())}.json")  # use file name with epoch seconds as default
     if file_path:
-        save_location = os.path.normcase(file_path) # convert specified path to path as per OS
+        # convert specified path to path as per OS
+        save_location = os.path.normcase(file_path)
 
     for bookmark in bookmarks:
         data.append({
@@ -45,7 +46,6 @@ def save_as_json(bookmarks: List[Bookmark], file_path: str) -> None:
             "title": bookmark.title,
             "tags": [tag._id for tag in bookmark.tags]
         })
-
 
     with open(save_location, "w") as out_file:
         json.dump({
@@ -71,7 +71,8 @@ def get_most_recent_bookmark_created_at_datetime(connection) -> Optional[datetim
                 if record:
                     return record[0].replace(tzinfo=None)
             except (Exception, psycopg2.Error) as error:
-                logger.error("Failed selecting record from bookmark table {}".format(error))
+                logger.error(
+                    "Failed selecting record from bookmark table {}".format(error))
 
     return None
 
@@ -103,11 +104,15 @@ def save_in_db(connection, bookmarks: List[Bookmark]) -> None:
 
     # convert models into tuple form to be used in sql execute statement
     for bookmark in bookmarks:
+        # 200 is length of title column in database
+        bookmark_title = (
+            bookmark.title[:197] + '...') if len(bookmark.title) > 200 else bookmark.title
         bookmark_records.append((bookmark._id, bookmark.created_at, bookmark.updated_at,
-                                 bookmark.link, bookmark.title))
+                                 bookmark.link, bookmark_title))
         bookmark_tag_mapping_records.extend(
             [(mapping.bookmark_id, mapping.tag_id) for mapping in bookmark.mappings])
-        tag_records_set.update([tag._id for tag in bookmark.tags]) # use a set to make a list of non-duplicate tags
+        # use a set to make a list of non-duplicate tags
+        tag_records_set.update([tag._id for tag in bookmark.tags])
 
     tag_records = [(tag,) for tag in tag_records_set]
 
@@ -121,7 +126,8 @@ def save_in_db(connection, bookmarks: List[Bookmark]) -> None:
             cursor.executemany(sql_bookmark_upsert_query, bookmark_records)
             connection.commit()
         except (Exception, psycopg2.Error) as error:
-            logger.error("Failed inserting records in bookmark table {}".format(error))
+            logger.error("Failed inserting records in bookmark table: {}".format(
+                error.__str__().strip()))
 
         try:
             sql_tag_insert_query = """
@@ -132,7 +138,8 @@ def save_in_db(connection, bookmarks: List[Bookmark]) -> None:
             cursor.executemany(sql_tag_insert_query, tag_records)
             connection.commit()
         except (Exception, psycopg2.Error) as error:
-            logger.error("Failed inserting record in tag table {}".format(error))
+            logger.error("Failed inserting record in tag table: {}".format(
+                error.__str__().strip()))
 
         try:
             sql_tag_mapping_record_insert_query = """
@@ -140,11 +147,12 @@ def save_in_db(connection, bookmarks: List[Bookmark]) -> None:
                             VALUES (%s,%s)
                             ON CONFLICT (bookmark_id, tag_id) DO NOTHING
                             """
-            cursor.executemany(sql_tag_mapping_record_insert_query, bookmark_tag_mapping_records)
+            cursor.executemany(
+                sql_tag_mapping_record_insert_query, bookmark_tag_mapping_records)
             connection.commit()
         except (Exception, psycopg2.Error) as error:
             logger.error(
-                "Failed inserting records in bookmark tag mapping table {}".format(error))
+                "Failed inserting records in bookmark tag mapping table: {}".format(error.__str__().strip()))
 
 
 def get_bookmarks_from_api_response_items(items: List[Dict]) -> List[Bookmark]:
@@ -158,7 +166,8 @@ def get_bookmarks_from_api_response_items(items: List[Dict]) -> List[Bookmark]:
         bookmark_tag_mappings: List[BookmarkTagMapping] = []
 
         for item_tag_str in item['tags']:
-            bookmark_tag_mappings.append(BookmarkTagMapping(item['_id'], item_tag_str))
+            bookmark_tag_mappings.append(
+                BookmarkTagMapping(item['_id'], item_tag_str))
             items_tags.append(Tag(item_tag_str))
 
         bookmarks.append(
@@ -200,13 +209,13 @@ def get_api_response_items(token: str, most_recent_bookmark_created_at_datetime:
             data = response.json()
             items_data = data["items"]
 
-            if len(items_data) > 0: # if reponse is non-empty
+            if len(items_data) > 0:  # if reponse is non-empty
                 items.extend(items_data)
                 pages_to_skip += 1
                 logger.info(
                     f"Loaded page {pages_to_skip} with {len(items_data)} bookmarks")
 
-                # is created_at of most recent bookamrk is available and 
+                # is created_at of most recent bookamrk is available and
                 # created_at of last bookmark is less than most recent, then we don't
                 # need to make any more API requests
                 if most_recent_bookmark_created_at_datetime:
@@ -215,10 +224,11 @@ def get_api_response_items(token: str, most_recent_bookmark_created_at_datetime:
 
                     if most_recent_bookmark_created_at_datetime >= last_record_created_at_datetime:
                         return items
-            else: # is response is empty, this means that last page has been accessed
+            else:  # is response is empty, this means that last page has been accessed
                 return items
         else:
-            logger.error(f"Request failed with status code {response.status_code}")
+            logger.error(
+                f"Request failed with status code {response.status_code}")
             return None
 
 
@@ -252,6 +262,8 @@ def wait_for_network_connection(max_tries: int) -> None:
 
 
 def main():
+    logger.info("-- START --")
+
     # load configration
     load_dotenv()
     config = get_config()
@@ -277,7 +289,7 @@ def main():
                     token, most_recent_bookmark_created_at_datetime)
                 if api_response_items:
                     bookmarks = get_bookmarks_from_api_response_items(
-                        api_response_items) # parse API response into model objects
+                        api_response_items)  # parse API response into model objects
 
                     if most_recent_bookmark_created_at_datetime:
                         filtered_bookmarks = get_filtered_bookmarks(
